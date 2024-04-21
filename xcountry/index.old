@@ -1,0 +1,536 @@
+#!/usr/bin/perl
+##########################################################
+# NewsScript.co.uk Basic 05/May/2005
+# © 1999-2005 EZScripting.com / NewsScript.co.uk
+# Script by Alexandre Golovkine Updated by Babelnotes.be
+##########################################################
+# Instructions: http://www.NewsScript.co.uk/instructions/
+# FAQ:          http://www.NewsScript.co.uk/faq/
+##########################################################
+my $script_name       = 'index.pl';
+my $databasefile      = 'news.txt'; 
+my $image_dir         = '../images/';
+my $image_url         = "http://andyc.info/images";
+my $html_template     = 'headlines.htm';
+my $record_template   = 'news.htm'; 
+my $idField	      = "ID";
+my $admin_mode        = 'admin';             
+my $select_image      = 1;
+my $hspace            = 9;
+my $vspace            = 2;
+my $Username          = 'admin';
+my $Password          = 'theend';
+my $news_up           = 1;
+##########################################################
+# EZscripting.com © 1999 - 2005
+# The scripts are available for private and commercial use
+# Once purchased this script can be used in any website you build personally
+# You may not sell the script in any format to anybody
+# The scripts may only be distributed by EZscripting.com
+# Do not post or email all or part of the this code in any form whatsoever
+# The redistribution of modified versions of the scripts is prohibited
+# EZscripting.com accepts no responsibility or liability
+# whatsoever for any damages however caused when using our services or scripts
+# By downloading and using this script you agree to the terms and conditions
+##########################################################
+
+use CGI qw/:standard/;
+
+$FORM{mode}=param('mode');
+$FORM{record}=param('record');
+$FORM{login}=param('login');
+$FORM{password}=param('password');
+$FORM{action}=param('action');
+$FORM{new_field}=param('new_name');
+$FORM{action}="default" if !$FORM{action};
+$FORM{headlines} = param('headlines');
+$page=param('page')+1;
+$default_mode=1 if param('mode') eq 'shtml';
+
+#check password
+
+if($Username && $FORM{mode} eq $admin_mode){
+	%COOKIES = get_cookie('USER_Login');
+	if($FORM{login}){
+		if($FORM{password} eq $Password && $FORM{login} eq $Username){
+			print "Set-Cookie: USER_Login=login&$FORM{login}&pass&$FORM{password}; path=/\n";
+			print "Location: $script_name?mode=$admin_mode\n\n";
+			print '<meta http-equiv="refresh" content="0;URL=http://andyc.info/xcountry/trip.pl?mode=admin">\n';
+			exit;
+		}
+		else{print "Content-type: text/html\n\n";  error("Wrong account info !");}
+	}
+	elsif(!$COOKIES{login}){promt();}
+	elsif($COOKIES{pass} ne $Password or $COOKIES{login} ne $Username){promt();}
+}
+if($FORM{action} eq 'logout'){
+	print "Set-Cookie: USER_Login=login&boerkenaas&pass&boerkenaas; path=/\n";
+	print "Location: $script_name\n\n";
+	exit;
+}
+
+sub CheckAdminMode {
+   if ($FORM{mode} ne $admin_mode) {
+      error("You need to be logged in!");
+      exit (1);
+   }
+}
+
+print "Content-type: text/html\n\n" unless $FORM{action} eq 'delete';
+create_db() unless -f $databasefile;
+my $txt;
+%SUB = (
+	default=> \&default,
+	main   => \&main,
+	add    => \&add,
+	save   => \&save,
+	logout => \&logout,
+	delete => \&delete,
+	update => \&update,
+	view   => \&view,
+	show   => \&show
+	);
+
+$SUB{$FORM{action}}->();
+html_text($txt);
+exit;
+##########################################################
+sub read_file{
+	open(F, $_[0]) || error("Can't open file $_[0]!");
+	my @data = <F>;
+	close F;
+	return @data;
+}
+sub read_base
+  {
+	my @content;
+	my @data = read_file("$databasefile");
+
+	chomp $data[0];
+	@field_name=split('\|',$data[0]);
+	my $p=0;
+	my $p=0; my $idPosition=-1;
+	foreach(@field_name){
+		$idPosition = $p if $_ eq $idField;
+		$show_position=$p if $_ eq 'show'; $p++;
+	}
+	error ('Old style database, please use dbconvert.pl first!') if $idPosition<0;
+	error('Bad database file') if @field_name<1;
+	my $b=0;
+	for(1..@data-1){
+		chomp $data[$_];
+		@line=split('\|',$data[$_]); 
+		my $a=0;
+		if($_[0] == 1){
+			if($line[$show_position] eq 'Yes'){
+					$content->[$b]->{'record'} = $line[0];
+					foreach $name (@field_name){$content->[$b]->{$name} = $line[$a++];}
+					$b++;
+			
+			}
+			#$content->[$b]->{'record'} = $line[0];
+			#foreach $name (@field_name){$content->[$b]->{$name} = $line[$a++];}
+			
+		}
+		else{
+			$content->[$_]->{'record'} = $line[0];
+			foreach $name (@field_name){$content->[$_]->{$name} = $line[$a++];}
+		}
+	}
+  return $content;
+}
+
+sub get_record{
+	my $text = $_[0]; 
+	$text =~ s{\[\[(.*?)\]\]}{exists($INSERT{$1}) ? $INSERT{$1} : ""}gsex;
+	return $text;
+}
+sub get_html{
+	my @txt = read_file($_[0]);
+	foreach(@txt){$txt.=$_;}
+	$txt=~/(.*)<template>(.*)<\/template>(.*)/s;
+	error("Template-tag not found!") if !$1 or !$2;
+	return ($1,$2,$3);
+}
+sub create_db{
+	open(F, ">$databasefile") || error ("Can't create DB-file!");
+	print F "$idField|date|headline|short_text|text|image|image_align|show\n";
+	close F;
+}
+sub default{
+	$records=$FORM{'headlines'};
+	if($FORM{mode} eq $admin_mode){main(); return;}
+	record($FORM{record}) if $FORM{record};
+	show() unless $default_mode;
+	
+	$data=read_base(1);
+	if($news_up){@data = reverse @$data;}
+	else{@data =  @$data;}
+	$records=@data if $records > @data;
+	$records=@data if !$records;
+	$data =\@data; my $txt;
+	($head, $tmp, $foot) = get_html($html_template);
+	
+	for(0..$records-1){
+		%INSERT={};
+		foreach $name (@field_name){$INSERT{$name}=$data->[$_]->{$name};}
+		$INSERT{image} = "<img src=\"$INSERT{image}\" border=0 align=$INSERT{image_align} hspace=$hspace vspace=$vspace>" if $INSERT{image};
+		if($INSERT{text} ne ''){
+			$INSERT{more} = "&nbsp;&nbsp;<a href=$script_name?record=".$data->[$_]->{'record'}.">More...</a>";
+			$INSERT{headline} = "<a href=$script_name?record=".$data->[$_]->{'record'}.">$INSERT{headline}</a>" if $INSERT{text} ne '';
+		}
+		
+		$result.= get_record($tmp);
+		
+	}
+
+print "<a name=\"top\">";
+print $result;
+exit;	
+}
+
+
+sub record{
+	$recordID = shift;
+	$data=read_base();
+	($head, $tmp, $foot) = get_html($record_template);
+
+	for(@$data){
+		if($_->{record} eq $recordID){
+			foreach $name (@field_name){$INSERT{$name}=$_->{$name};}
+			last;
+		}
+	}
+	
+	
+	$INSERT{image} = "<img src=\"$INSERT{image}\" border=0 align=$INSERT{image_align} hspace=$hspace vspace=$vspace>" if $INSERT{image};
+	$result = get_record($tmp);
+
+print get_record($head), $result, $foot;
+exit;
+}
+
+sub show{
+        my $searchTerms;
+
+	$data=read_base(1);
+	($head, $tmp, $foot) = get_html($html_template);
+	my $a=0;
+	if($news_up){@data = reverse @$data;}
+	else{@data =  @$data;}
+      	$data =\@data; my $txt;
+	
+	$records=@data if $records > @data;
+	$records=@data if !$records;
+
+	for(0..$records-1){
+			%INSERT={};
+			foreach $name (@field_name){$INSERT{$name}=$data->[$_]->{$name};}
+			$INSERT{image} = "<img src=\"$INSERT{image}\" border=0 align=$INSERT{image_align} hspace=$hspace vspace=$vspace>" if $INSERT{image};
+			if($INSERT{text} ne ''){
+				$INSERT{more} = "&nbsp;&nbsp;<a href=$script_name?record=$data->[$_]->{'record'}>More...</a>";
+				$INSERT{headline} = "<a href=$script_name?record=$data->[$_]->{'record'}>$INSERT{headline}</a>";
+			}
+			$result.= get_record($tmp);
+	}
+
+	$INSERT{records} = @data-1;
+	$INSERT{page_selector} = "";
+	$heads = "&headlines=$FORM{headlines}" if $FORM{headlines};
+
+
+	$foot = get_record($foot);
+	$head = get_record($head);
+	$result = $not_found unless @data;
+	print $head, $result, $foot;
+	exit;
+}
+
+sub main{
+	$data=read_base();
+	$txt .= qq|<table width=600><tr><th class=of colspan=4>NewsScript.co.uk - News Content Management System</th></tr><tr><td colspan=4 align=right><a href=$script_name?mode=$admin_mode&action=add>Add new record</a>|;
+	$txt .= qq|	<a href=$script_name?mode=$admin_mode&action=logout>Logout</a></td></tr>
+		<tr class=on><th class=of width=120>Actions</th><th class=of width=80>Date</th><th class=of width=400>Headline</th><th class=of width=80>Show</th></tr>|;
+		$start=1; $end=@$data-1;
+		
+		
+		
+		if($news_up){
+			foreach($i=$end; $i>=$start;$i--){
+				$txt.= qq|<tr class=off><td align=center valign=top><a href=$script_name?mode=$admin_mode&action=delete&record=$data->[$i]->{'record'} onclick="return confirm('Delete record: «$data->[$i]->{headline}»')">Del.</a> 
+				<a href=$script_name?mode=$admin_mode&action=update&record=$data->[$i]->{'record'}>Edit</a> 
+				<a href=$script_name?mode=$admin_mode&action=view&record=$data->[$i]->{'record'}>View</a></td><td valign=top>$data->[$i]->{'date'}</td><td>$data->[$i]->{'headline'}</td>|;
+				$txt.= qq|<td align=center>$data->[$i]->{'show'}</td>|;
+				$txt.= qq| </tr>|;
+			}
+		}
+		else{
+			for($start..$end){
+				$txt.= qq|<tr class=off><td align=center valign=top><a href=$script_name?mode=$admin_mode&action=delete&record=$data->[$i]->{'record'} onclick="return confirm('Delete record: «$data->[$_]->{headline}»')">Del.</a> 
+				<a href=$script_name?mode=$admin_mode&action=update&record=$data->[$i]->{'record'}>Edit</a> 
+				<a href=$script_name?mode=$admin_mode&action=view&record=$data->[$i]->{'record'}>View</a></td><td valign=top>$data->[$_]->{'date'}</td><td>$data->[$_]->{'headline'}</td>|;
+				$txt.= qq|<td align=center>$data->[$_]->{'show'}</td>|;
+				$txt.= qq| </tr>|;
+			}
+		}
+
+	$txt.="</table>\n";	
+
+}
+sub view{
+	$data=read_base(); my $a=0;
+	$length = @$data-1;
+	$current = $FORM{record};
+	my $recData = {};
+	my @Indexes; my $i=0; my $index;
+	for(@$data){
+		if($current==$_->{'record'}){
+			$recData = $_;
+			$index=$i;
+		}
+		push @Indexes, $_->{'record'};
+		$i++;
+	}
+	
+	$txt .= qq|<table width=600><tr><th class=of colspan=2>NewsScript.co.uk - News Content Management System</th></tr><tr><td colspan=4 align=right><a href=$script_name?mode=$admin_mode>Return to List</a> <a href=$script_name?mode=$admin_mode&action=logout>Logout</a></td></tr>|;
+	$txt .= qq|<tr><td class=of colspan=2 align=left>&nbsp;&nbsp; <b>News story #$current of $length</b> [<a href=$script_name?mode=$admin_mode&action=add>add new</a>] [ <a href=$script_name?mode=$admin_mode&action=update&record=$FORM{record}>edit</a> ] </td></tr>
+			<tr class=off><td width=100>Date:</td><td width=488>$recData->{'date'}</td></tr>
+			<tr class=off><td>headline:</td><td>$recData->{'headline'}</td></tr>
+			<tr class=off><td valign=top>Short text:</td><td>$recData->{'short_text'}</td></tr>
+			<tr class=off><td valign=top>Text:</td><td>$recData->{'text'}</td></tr>|;
+	$txt .= qq|	<tr class=off><td valign=top>Image:</td><td><img src="$recData->{'image'}" border=0 alt"$recData->{'image'}" align="$recData->{'image_align'}"></td></tr>| if $recData->{'image'};
+	$txt .= qq|	<tr class=off><td valign=top>Image2:</td><td><img src="$recData->{'image2'}" border=0 alt"$recData->{'image2'}" align="$recData->{'image_align2'}"></td></tr>| if $recData->{'image2'};
+
+
+	$txt .= qq|	<tr class=off><td valign=top>Show:</td><td>$recData->{'show'}</td></tr>|;
+	
+	if($add_fields){
+		for(10..@field_name-1){$txt .= qq|<tr class=off><td valign=top>$field_name[$_]:</td><td>$recData->{$field_name[$_]}</td></tr>\n|;}
+	}
+	
+	$txt .= qq|	<tr class=off><td colspan=2>&nbsp;&nbsp;|;
+	$txt .= qq|&lt;&lt; <a href="$script_name?mode=$admin_mode&action=view&record=|.($Indexes[$index-1]).qq|">previous</a> | unless $index==1;
+	for(1..@Indexes-1){
+		$txt .= qq| [|;
+		$txt .= qq|<a href="$script_name?mode=$admin_mode&action=view&record=$Indexes[$_]">| unless $Indexes[$_] eq $FORM{record};
+		$txt .= qq|$_|;
+		$txt .= qq|</a>| unless $_ eq $FORM{record};
+		$txt .= qq|] |;
+	}
+	$txt .= qq|&nbsp; <a href="$script_name?mode=$admin_mode&action=view&record=|.($Indexes[$index+1]).qq|">next</a> &gt;&gt;| if $index<$length;
+	$txt .= qq|</td></tr></table>|;
+	
+	
+
+}
+sub save_image{
+	$file=param($_[0]);
+	$file =~m/([^\\\/]*\.\w*\Z)/i;
+	$filename=$1; 
+	open(FILE,">$_[1]/$1") || error("Can't save image file!");
+	binmode FILE; 
+	while ($bytesread=read($file,$buffer,1024)) {print FILE $buffer;} 
+	close(FILE);
+        return "$filename"; 
+}
+sub save{
+	$data = read_base();
+        CheckAdminMode();
+	#find position:
+	my $pos =0; my $i;
+	for(@$data){
+		if($FORM{record} eq $_->{'record'}){$pos=$i;}
+		$maxId = $_->{'record'} if $_->{'record'}>$maxId;
+		$i++;
+	}
+	$maxId++;
+	my $new_record;
+	foreach(@field_name){
+		my $text;
+		if($_ eq $idField){
+			$text.= $FORM{record}? $FORM{record}:$maxId;
+		}
+		elsif($_ eq 'image' && param('image') ne ''){
+			$dir = $image_dir; $text = $image_url."/";
+			$text .= save_image($_, $dir);
+		}
+		elsif($_ eq 'image' && param('_image')){$text .=param('_image');}
+		elsif($_ eq 'image' && param('set_image')){$text .="$image_url/".param('set_image');}
+
+		elsif($_ eq 'show'){$text=param($_); $text="No" unless param($_);}
+		else{
+			$text=param($_);
+			$text=~s/\n/<br>/g;
+			$text=~s/\r//g;
+			$text=~s/\|/I/g;
+		}
+		$new_record .= $text."|";
+	}  
+	chop $new_record;
+	$new_record .= "\n";
+	chop $new_record;
+	$new_record .= "\n";
+	if(param('record')){
+		open (F, "$databasefile") || error("Can't open databasefile!");
+		@data = <F>;
+		close F;	
+		$data[$pos] = $new_record;	
+		open (F, ">$databasefile") || error("Can't open databasefile!");
+		foreach(@data) {print F }
+		close F;
+	}
+	else{
+		open (F, ">>$databasefile") || error("Can't open databasefile!");
+		print F $new_record;
+		close F;
+	}
+	main();
+}
+sub delete{
+        CheckAdminMode();
+	$data=read_base();
+	my $pos=-1; $i;
+	for(@$data){
+		if($FORM{record}==$_->{'record'}){
+			$pos=$i;
+			last;
+		}
+		$i++;
+	}
+	if($FORM{record}){
+		open (F, "$databasefile") || error("Can't open databasefile!");
+		@data = <F>;
+		close F;	
+		$data[$pos] = "";	
+		open (F, ">$databasefile") || error("Can't open databasefile!");
+		foreach(@data) {print F }
+		close F;
+	}
+        if ($usefeeds) {make_feed();}
+	print "Location: $script_name?mode=$admin_mode\n\n";
+	exit;
+}
+sub add{
+        CheckAdminMode();
+	$data=read_base();
+	my $recData = {};
+	for(@$data){
+		if($_[0]==$_->{'record'}){
+			$recData = $_;
+			last;
+		}
+	}
+	
+	if ($_[0]){
+		$hidden=qq|<input type=hidden name=record value=$_[0]>|;
+		
+		$recData->{'short_text'}=~s/<br>/\n/g;
+		$recData->{'text'}=~s/<br>/\n/g;
+		$image = "<input type=checkbox name=_image value=$recData->{'image'} checked><a href=$recData->{'image'} target=_blank>$recData->{'image'}</a><br>" if $recData->{'image'};
+	
+	}
+	if($select_image){
+		opendir(DIR, "$image_dir");
+		foreach(readdir DIR)
+		{
+			#$img_select.="<option>$_</option>\n" if -f "$image_dir/$_" && $_=~m/.\gif|.\jpg/i;
+		}
+		close DIR;
+		$img_select1 = "<br><select name=set_image><option value=''>or select image</option>$img_select</select>";
+	
+	}
+	$show = "checked" unless $recData->{'show'} eq "No";
+	$left = "selected" if $recData->{'image_align'} eq "left";
+	$center = "selected" if $recData->{'image_align'} eq "center";
+	$right = "selected" if $recData->{'image_align'} eq "right";
+	
+	$hidden.= qq|<input type=hidden name=password value=$FORM{password}>
+		  <input type=hidden name=login value=$FORM{login}>| if $FORM{login};
+	
+	$txt .= qq|<table width=600><tr><th class=of colspan=2>NewsScript.co.uk - News Content Management System</th></tr><tr><td colspan=4 align=right><a href=$script_name?mode=$admin_mode>Return to List</a> <a href=$script_name?mode=$admin_mode&action=logout>Logout</a></td></tr>|;
+	$txt .= qq|<form action=$script_name method=post  name=myform ENCTYPE="multipart/form-data">
+		<input type=hidden name=mode value=$admin_mode>
+		<input type=hidden name=action value=save>$hidden
+			<tr class=off><td>Date:</td><td><input name=date value="$recData->{'date'}"></td></tr>
+			<tr class=off><td>headline:</td><td><input name=headline size=45  value="$recData->{'headline'}"></td></tr>
+			<tr class=off><td>Short text:</td><td><textarea name=short_text rows=10 cols=65>$recData->{'short_text'}</textarea></td></tr>
+			<tr class=off><td>Text:</td><td><textarea name=text rows=1 cols=35>$recData->{'text'}</textarea></td></tr>|;
+	$txt .= qq|	<tr class=off><td valign="top">Image:</td><td>$image<input type=file name=image>$img_select1</td></tr>
+			<tr class=off><td>Image aligement:</td><td><select name=image_align><option $left>left<option $center>center<option $right>right</select></td></tr>
+			<tr class=off><td colspan=2><input type=checkbox name=show value="Yes" $show>Show this record.</td></td></tr>|;
+			
+			
+	$txt .= qq|	<tr class=off><td colspan=2 align=center><input type=submit value=" [ submit] "> <input type=reset value=" [ reset] "></td></tr></table></form></center>|;
+
+	
+
+}
+
+sub update{
+  CheckAdminMode();
+  add($FORM{record});
+  }
+
+
+sub get_cookie{
+my %COOK;# print $ENV{HTTP_COOKIE};
+	@cookies=split('; ',$ENV{HTTP_COOKIE});
+	foreach $line (@cookies){
+		($c_name, $c_value) = split(/=/,$line,2);
+		if ($c_name eq $_[0]){
+			@cook=split(/&/,$c_value);
+			for($a=0; $a<@cook; $a+=2){
+				$cook[$a+1] =~ s/%([a-fA-F0-9][a-fA-F0-9])/pack("C", hex($1))/eg;
+				$COOK{$cook[$a]}=$cook[$a+1];
+			}
+		}
+	}
+	return %COOK;
+}
+sub promt{
+	print "Content-Type: text/html\n\n";
+	    html_text(qq|
+	      <br><br><br><br><center><form method=post action=$script_name>
+	      <input type=hidden name=mode value=$admin_mode>
+	      <table border=0 width=280>
+	        <tr><th colspan=2 class=of>Content-Manager Login</th></tr>
+		<tr class=on><td width=43% align=right>Login: </td>
+		    <td width=57%><input type=text name=login size=13></td></tr>
+		<tr class=on><td align=right>Password: </td>
+		    <td><input type=password name=password size=13></td></tr>
+		<tr class=on><td colspan=2 align=center><input type=submit></td></tr>
+	      </table></form></center>|);
+	exit;
+}
+sub error{
+	html_text ("<br><br><br><center><font color=red><h3>$_[0]</h3></font></center>\n");
+	exit;
+} 
+sub html_text{
+	print qq|<html>
+		<head>
+		<title>NewsScript.co.uk - News Content Management System</title>
+		<style>
+			tr,td,body {font-family: Tahoma, Arial; font-size:10pt;}  
+			.of {border-style:solid; border-width: 1; border-color : #999999; background-color:#dddddd}
+			.on {border-style:none;background-color:#ddeedd}
+			.off {border-style:none;background-color:#f3f3f3}
+		</style>
+		</head>
+		<body>
+		$_[0]
+		</body></html>|;
+}
+
+##########################################################
+# EZscripting.com © 1999 - 2005
+# The scripts are available for private and commercial use
+# Once purchased this script can be used in any website you build personally
+# You may not sell the script in any format to anybody
+# The scripts may only be distributed by EZscripting.com
+# Do not post or email all or part of the this code in any form whatsoever
+# The redistribution of modified versions of the scripts is prohibited
+# EZscripting.com accepts no responsibility or liability
+# whatsoever for any damages however caused when using our services or scripts
+# By downloading and using this script you agree to the terms and conditions
+##########################################################

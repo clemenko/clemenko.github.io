@@ -1,0 +1,69 @@
+==================================================================
+https://keybase.io/clemenko
+--------------------------------------------------------------------
+
+I hereby claim:
+
+  * I am an admin of https://andyc.info
+  * I am clemenko (https://keybase.io/clemenko) on keybase.
+  * I have a public key with fingerprint 5D23 F230 5CD9 8477 4FB2  0E8F 9F37 134D 1ABB 8EA3
+
+To do so, I am signing this object:
+
+{
+    "body": {
+        "key": {
+            "eldest_kid": "01016432c155b5f8b5d0b231ea71e4792cae2252aef0a4786ed6ebc75a5029fbe6a60a",
+            "fingerprint": "5d23f2305cd984774fb20e8f9f37134d1abb8ea3",
+            "host": "keybase.io",
+            "key_id": "9f37134d1abb8ea3",
+            "kid": "01016432c155b5f8b5d0b231ea71e4792cae2252aef0a4786ed6ebc75a5029fbe6a60a",
+            "uid": "c816c423e351d856511bb7597810c119",
+            "username": "clemenko"
+        },
+        "service": {
+            "hostname": "andyc.info",
+            "protocol": "https:"
+        },
+        "type": "web_service_binding",
+        "version": 1
+    },
+    "ctime": 1468518278,
+    "expire_in": 157680000,
+    "prev": "3f93ecdf8c11aa88acce18f5e7c436877c4c28e8e4c57aa78929f15fc15a888f",
+    "seqno": 4,
+    "tag": "signature"
+}
+
+which yields the signature:
+
+-----BEGIN PGP MESSAGE-----
+Version: Keybase OpenPGP v2.0.53
+Comment: https://keybase.io/crypto
+
+yMIjAnicrZJbSBVBGMfX7HrCisIKKoqFjEJzZ3dnZ/ZQliVU4EtQFFlss7Mzuufo
+7unsHstMMKIShCjLokihy0M3LKTLQ0oXIqILFT5YQTf1oQcL6hQJUTYr9dZj8/Ix
+H7//f/7fx9zLy5ViOZa04OCVvjUo59Gd1oy0Yf/TffWy7Tt1crxeTrKRwqodFoRW
+0nXkuKwABRi6plIAoQ05tqGj2KoGGEGA6chUKWGqClXCuEJ0hA3mGMymCBKoqCa3
+mUEMhciFMne9SpZOpV0vFLbQUTWuagqkjol1hHRuqwrD3OQaApruAGLbmBFNCKv8
+IFKIcDYJ2GLXFz1xsUbi/YP/z7kzI3YUA4PqqsY0CBwMDQiAbSNoIgwUCoAZgQFL
+e6SGRXQ1q2Fe0pcbCmXRrXUpixYbTfKHIJ5TRxe7Ho+mSaX90Kd+tehXhWEqiEe6
+sC4VgduZbf2xsGzXc8QWhaKWpQPX9+Q4ECQN3cgT6AaGAKsIF8psR8pNM8uNCIgM
+rIgTvcNqhaXGTY1Rh2MRnBCMCaUMYA4ZorpmYCQKVTHDTKcQEYKwKRYCIBerFDTm
+cjTUNs+X47qISSqFZeBWeiTMpJnccPf25tFSTkwaO2ZU9Luk2IQpf/9cycJxP2ce
+bim/9UvKNhza6o4q+dnY1HNpWebOiZKvtdvCYm9ecVdzd3HVy81PLiefLX//qmfB
+pbnnW/o/FsWW5j98/rlj1ocZ0vDuk4P+/kT4ocQcbC+9urIQZzqHCr79+BKvyO87
+izblfp/bWzp9YIhlOxJqz80jWdkZ/3lX4viWjUW7G6/nZVbMjvFze6xeXjNt6/Ts
+rftBd9unC8PvBoJ1eycmVpw60HoGlrfErcCY33atsfh69s2qrrNTmyuO5Q+UOfHe
+jrL7D9aPJkXDc9YOLaFbOiffmPG67QA92p99UjHpbidvWvTmxen6faut9pac/lzw
+OLz4PPUus7PvbWllx2ABGPoNKStEIQ==
+=13e3
+-----END PGP MESSAGE-----
+
+And finally, I am proving ownership of this host by posting or
+appending to this document.
+
+View my publicly-auditable identity here: https://keybase.io/clemenko
+
+==================================================================
+
